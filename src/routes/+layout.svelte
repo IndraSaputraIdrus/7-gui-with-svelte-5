@@ -13,7 +13,7 @@
 		<ul class="space-y-2">
 			{#each tasks as task}
 				<li>
-					<a class="hover:text-indigo-500" href="/tasks/{task.href}">{task.name}</a>
+					<a class="hover:text-indigo-500" href="/example/{task.href}">{task.name}</a>
 				</li>
 			{/each}
 		</ul>

@@ -18,5 +18,9 @@ export const tasks = [
   {
     name: '05. Crud',
     href: '05-crud'
+  },
+  {
+    name: "06. Cirle Drawer",
+    href: '06-circle-draw'
   }
 ];
