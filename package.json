@@ -31,5 +31,8 @@
 		"@sveltejs/vite-plugin-svelte": "^4.0.0",
 		"svelte": "^5.1.4"
 	},
-	"type": "module"
+	"type": "module",
+	"dependencies": {
+		"clsx": "^2.1.1"
+	}
 }

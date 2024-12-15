@@ -1,4 +1,7 @@
 <script lang="ts">
+	import clsx from 'clsx';
+	import { fade } from 'svelte/transition';
+
 	type Circle = {
 		id: string;
 		cx: number;
@@ -6,13 +9,13 @@
 		r: number;
 	};
 
-	type Status = 'drawing' | 'editing';
+	type Status = 'editing' | 'drawing';
 
-	let status = $state<Status>('drawing');
-	let circles = $state<Circle[]>([]);
-	let selected = $state<Circle>()!;
+	let circles: Circle[] = $state([]);
+	let status: Status = $state('drawing');
+	let selected: Circle = $state()!;
 
-	let snapshots: Circle[][] = [];
+	let snapshots: Circle[][] = $state([]);
 	let history = $state(-1);
 
 	function drawCircle(e: MouseEvent) {
@@ -22,8 +25,8 @@
 			return;
 		}
 
-		const svgEl = e.target as SVGElement;
-		const { left, top } = svgEl.getBoundingClientRect();
+		const element = e.target as SVGElement;
+		const { left, top } = element.getBoundingClientRect();
 
 		const circle: Circle = {
 			id: window.crypto.randomUUID(),
@@ -38,50 +41,51 @@
 	}
 
 	function undo() {
-		circles = snapshots[--history];
+		if (history > -1) {
+			circles = snapshots[--history];
+		}
 	}
-
 	function redo() {
-		circles = snapshots[++history];
+		if (history < snapshots.length - 1) {
+			circles = snapshots[++history];
+		}
 	}
 
 	function snapshot() {
-		history++;
+		if (history < snapshots.length - 1) {
+			snapshots = snapshots.slice(0, history + 1);
+		}
 		snapshots.push($state.snapshot(circles));
+		history++;
 	}
+
+	$effect(() => {
+		if (circles === undefined) {
+			circles = [];
+		}
+	});
 </script>
 
-<section class="flex h-full items-center justify-center">
-	<div>
-		<h1 class="mb-4 text-center text-2xl font-semibold">Cirle Draw</h1>
-		<div class="relative space-y-4">
-			<div class="items-enter flex justify-center gap-2">
-				<button onclick={undo} disabled={history === -1}>Undo</button>
-				<button onclick={redo} disabled={history === snapshots.length - 1}>Redo</button>
-			</div>
+<section class="grid h-full place-content-center">
+	<div class="grid w-[600px] grid-cols-2 gap-5">
+		<div class="col-span-2">
+			<h1 class="text-center text-3xl font-semibold">Circle draw</h1>
+		</div>
 
-			{#if status === 'editing'}
-				<div
-					class="absolute bottom-[10%] left-1/2 w-1/2 w-[70%] -translate-x-1/2 rounded border bg-zinc-800 p-3"
-				>
-					<label class="flex flex-col justify-center space-y-3">
-						<span class="text-center text-sm"
-							>Adjust diameter of circle at {selected.cx}, {selected.cy}</span
-						>
-						<input type="range" id="radius" bind:value={selected.r} />
-					</label>
-				</div>
-			{/if}
+		{@render button({ text: 'Undo', onclick: undo, disabled: history === -1 })}
+		{@render button({ text: 'Redo', onclick: redo, disabled: history === snapshots.length - 1 })}
 
+		<div class="relative col-span-2 rounded border border-zinc-500">
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<svg onclick={drawCircle} class="h-[400px] w-[600px] border" viewBox="0 0 600 400">
+			<svg onclick={drawCircle} viewBox="0 0 600 400" class="h-[400px] w-[600px]">
 				{#each circles as circle}
+					{@const active = selected.id === circle.id}
 					<circle
+						{...circle}
+						class={clsx(active ? 'fill-zinc-100' : 'fill-transparent')}
 						stroke="#fff"
 						stroke-width="2"
-						class={`${selected.id === circle.id ? 'fill-gray-500' : 'fill-transparent'} transition`}
-						{...circle}
 						onclick={(e) => {
 							e.stopPropagation();
 							selected = circle;
@@ -97,12 +101,43 @@
 					></circle>
 				{/each}
 			</svg>
+
+			{#if status === 'editing'}
+				<div
+					transition:fade={{ duration: 250 }}
+					class="absolute bottom-5 left-1/2 flex -translate-x-1/2 flex-col gap-2 rounded bg-zinc-800 p-4"
+				>
+					<p>Adjust diameter of circle at {selected.cx}, {selected.cy}</p>
+					<input
+						type="range"
+						min="10"
+						max="100"
+						class="focus:outline-none"
+						bind:value={selected.r}
+					/>
+				</div>
+			{/if}
 		</div>
 	</div>
 </section>
 
-<style lang="postcss">
-	button {
-		@apply block rounded border border-zinc-900 bg-gradient-to-b from-white via-zinc-200 to-zinc-400 px-7 py-0.5 text-center font-semibold text-zinc-900 transition hover:opacity-90 active:scale-105 disabled:opacity-60 disabled:cursor-not-allowed;
-	}
-</style>
+{#snippet button({
+	text,
+	onclick,
+	disabled
+}: {
+	text: string;
+	onclick: () => void;
+	disabled: boolean;
+})}
+	<button
+		{onclick}
+		{disabled}
+		class={clsx(
+			'rounded bg-white text-black',
+			'px-3 py-2',
+			'transition-all ease-in-out',
+			'hover:bg-white/80 active:scale-105 disabled:bg-white/50'
+		)}>{text}</button
+	>
+{/snippet}
